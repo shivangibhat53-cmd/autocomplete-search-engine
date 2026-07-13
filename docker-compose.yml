@@ -1,0 +1,149 @@
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: autocomplete_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: autocomplete
+    #ports:
+      #- "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ───────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: autocomplete_redis
+    #ports:
+      #- "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Shard 1 ─────────────────────────────────────────────────
+  shard-1:
+    build: .
+    container_name: autocomplete_shard1
+    environment:
+      SHARD_NAME: shard-1
+      SHARD_PORT: "50051"
+      ALL_SHARDS: "shard-1,shard-2,shard-3"
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/autocomplete
+      DOCKER_ENV: "true"
+    ports:
+      - "50051:50051"
+      - "8001:8001"
+    command: ["uvicorn", "src.shard_service.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Shard 2 ─────────────────────────────────────────────────
+  shard-2:
+    build: .
+    container_name: autocomplete_shard2
+    environment:
+      SHARD_NAME: shard-2
+      SHARD_PORT: "50052"
+      ALL_SHARDS: "shard-1,shard-2,shard-3"
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/autocomplete
+      DOCKER_ENV: "true"
+    ports:
+      - "50052:50052"
+      - "8002:8002"
+    command: ["uvicorn", "src.shard_service.main:app", "--host", "0.0.0.0", "--port", "8002"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Shard 3 ─────────────────────────────────────────────────
+  shard-3:
+    build: .
+    container_name: autocomplete_shard3
+    environment:
+      SHARD_NAME: shard-3
+      SHARD_PORT: "50053"
+      ALL_SHARDS: "shard-1,shard-2,shard-3"
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/autocomplete
+      DOCKER_ENV: "true"
+    ports:
+      - "50053:50053"
+      - "8003:8003"
+    command: ["uvicorn", "src.shard_service.main:app", "--host", "0.0.0.0", "--port", "8003"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── BK-Tree Fuzzy Search Service ───────────────────────────
+  bk-tree-service:
+    build: .
+    container_name: autocomplete_bktree
+    environment:
+      BK_TREE_GRPC_PORT: "50060"
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/autocomplete
+      DOCKER_ENV: "true"
+    ports:
+      - "50060:50060"   # gRPC
+      - "8004:8004"     # HTTP health
+    command: ["uvicorn", "src.bk_tree_service.main:app",
+              "--host", "0.0.0.0", "--port", "8004"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Router ──────────────────────────────────────────────────
+  router:
+    build: .
+    container_name: autocomplete_router
+    environment:
+      SHARD_ADDRESSES: "shard-1:50051,shard-2:50052,shard-3:50053"
+      SHARD_HTTP_PORTS: "shard-1:8001,shard-2:8002,shard-3:8003"
+      BK_TREE_ADDRESS: "bk-tree-service:50060"
+      REDIS_URL: "redis://redis:6379"
+      DATABASE_URL: "postgresql://postgres:password@postgres:5432/autocomplete"
+      DOCKER_ENV: "true"
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "src.router_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy   # ← wait for postgres healthcheck
+      redis:
+        condition: service_healthy   # ← wait for redis healthcheck
+      bk-tree-service:
+        condition: service_started
+      shard-1:
+        condition: service_started
+      shard-2:
+        condition: service_started
+      shard-3:
+        condition: service_started
+
+  # ── Nginx ───────────────────────────────────────────────────
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: autocomplete_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - router
+    restart: always
+
+volumes:
+  postgres_data:
+  redis_data:

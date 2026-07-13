@@ -1,0 +1,21 @@
+timestamp,query,user_session,clicked_result,time_spent_ms
+2024-01-15 09:00:01,python,sess_001,python,1200
+2024-01-15 09:00:02,pythn,sess_002,python,800
+2024-01-15 09:00:03,javascript,sess_003,javascript,950
+2024-01-15 09:00:04,pandas,sess_004,pandas,1100
+2024-01-15 09:00:05,pyhton,sess_005,python,750
+2024-01-15 09:00:06,react,sess_006,react,1300
+2024-01-15 09:00:07,java,sess_007,java,900
+2024-01-15 09:00:08,pytorch,sess_008,pytorch,1050
+2024-01-15 09:00:09,machine learning,sess_009,machine learning,1400
+2024-01-15 09:00:10,python,sess_010,python,1100
+2024-01-15 09:00:11,data science,sess_011,data science,1200
+2024-01-15 09:00:12,javascrpt,sess_012,javascript,850
+2024-01-15 09:00:13,pandas,sess_013,pandas,950
+2024-01-15 09:00:14,react,sess_014,react,1150
+2024-01-15 09:00:15,python,sess_015,python,1300
+2024-01-15 09:00:16,deep learning,sess_016,deep learning,1400
+2024-01-15 09:00:17,tensorflow,sess_017,tensorflow,1100
+2024-01-15 09:00:18,java,sess_018,java,900
+2024-01-15 09:00:19,docker,sess_019,docker,1050
+2024-01-15 09:00:20,kubernetes,sess_020,kubernetes,1200

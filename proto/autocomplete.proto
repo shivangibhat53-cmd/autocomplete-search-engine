@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package autocomplete;
+
+// ── Shard Messages ──────────────────────────────────────────────────
+
+message SearchRequest {
+  string prefix = 1;    // the search prefix e.g. "py"
+  int32  limit  = 2;    // max results to return
+  bool   fuzzy  = 3;    // enable fuzzy matching
+}
+
+message Suggestion {
+  string word   = 1;    // the suggested word
+  float  score  = 2;    // ranking score
+  string source = 3;    // "exact" or "fuzzy"
+}
+
+message SearchResponse {
+  string            query       = 1;
+  repeated Suggestion results   = 2;
+  int32             total       = 3;
+  string            shard_name  = 4;   // which shard responded
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string shard_name  = 1;
+  string status      = 2;   // "healthy" | "degraded"
+  int32  word_count  = 3;   // how many words this shard holds
+}
+
+message WordRequest {
+  string word      = 1;
+  int32  frequency = 2;
+}
+
+message WordResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message StatsRequest {}
+
+message StatsResponse {
+  string shard_name = 1;
+  int32  word_count = 2;
+  repeated Suggestion top_words = 3;
+}
+
+// ── BK-Tree service messages ──────────────────────────────────
+
+message FuzzySearchRequest {
+  string query        = 1;
+  int32  max_distance = 2;
+  int32  limit        = 3;
+}
+
+message FuzzySearchResult {
+  string word      = 1;
+  int32  distance  = 2;
+  int32  frequency = 3;
+}
+
+message FuzzySearchResponse {
+  string                    query   = 1;
+  repeated FuzzySearchResult results = 2;
+  int32                     total   = 3;
+}
+
+message BKStatsResponse {
+  int32  size       = 1;
+  int32  depth      = 2;
+  int32  word_count = 3;
+  string status     = 4;
+}
+
+// ── Service definition ─────────────────────────────────────────
+// This is the contract between Router and each Shard.
+// Router calls these methods, Shard implements them.
+
+service AutocompleteService {
+  rpc Search     (SearchRequest)  returns (SearchResponse);
+  rpc Health     (HealthRequest)  returns (HealthResponse);
+  rpc InsertWord (WordRequest)    returns (WordResponse);
+  rpc DeleteWord (WordRequest)    returns (WordResponse);
+  rpc GetStats   (StatsRequest)   returns (StatsResponse);
+}
+
+
+// ── BK-Tree Service ───────────────────────────────────────────
+// Implemented by the dedicated BK-Tree microservice
+// Called by the router for all fuzzy search requests
+// Completely independent of shard health
+
+service BKTreeService {
+  rpc FuzzySearch (FuzzySearchRequest) returns (FuzzySearchResponse);
+  rpc InsertWord  (WordRequest)        returns (WordResponse);
+  rpc Health      (HealthRequest)      returns (HealthResponse);
+  rpc GetStats    (StatsRequest)       returns (BKStatsResponse);
+}
