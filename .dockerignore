@@ -1,0 +1,50 @@
+# Virtual environment — never copy into Docker image
+.venv/
+venv/
+
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Tests — not needed in production image
+tests/
+.pytest_cache/
+coverage.xml
+*.xml
+
+# Environment files — secrets never go in Docker
+.env
+.env.example
+
+# Development files
+*.md
+.dockerignore
+docker-compose*.yml
+Dockerfile
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Streamlit — runs separately, not in API container
+streamlit_app.py
+
+# Data files — loaded from DB at runtime
+data/trie.json
+data/search_logs.csv
+
+# Logs
+*.log
