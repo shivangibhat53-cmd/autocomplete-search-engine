@@ -91,7 +91,6 @@ def api_select(word: str) -> None:
         print(f"Select error: {e}")
 
 
-
 def api_stats() -> dict | None:
     try:
         r = requests.get(f"{API_BASE}/stats", timeout=5)
